@@ -1,29 +1,75 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { v4 as uuidv4 } from "uuid";
 import "./App.css";
 import Password from "./components/Password";
 import Empty from "./components/Empty";
 
 function App() {
-  const [website, setWebsite] = useState("");
   const [username, setUsername] = useState("");
-  const [password, SetPassword] = useState("");
-  const [passwords, setPasswords] = useState([]);
+  const [websiteName, setWebsiteName] = useState("");
+  const [password, setPassword] = useState("");
+  const [allPasswordList, setAllPasswordList] = useState([]);
+  const [showPassword, setShowPassword] = useState(false);
+  const [search, setSearch] = useState("");
+  const [searchResults, setSearchResults] = useState(allPasswordList);
 
-  const handleAddPassword = (event) => {
-    event.preventDefault();
-    if (website && username && password) {
-      setPasswords((prevPasswords) => [
-        ...prevPasswords,
-        {
-          website: website,
-          username: username,
-          password: password,
-        },
-      ]);
+  useEffect(() => setSearchResults(allPasswordList), [allPasswordList]);
+
+  const [error, setError] = useState(false);
+
+  const handleOnChangeWebSite = (event) => {
+    setWebsiteName(event.target.value);
+  };
+
+  const handleOnChangeUsername = (event) => {
+    setUsername(event.target.value);
+  };
+
+  const handleOnChangePassword = (event) => {
+    setPassword(event.target.value);
+  };
+
+  const checkAllFields = () => {
+    if (websiteName !== "" && username !== "" && password !== "") {
+      return true;
     }
-    setWebsite("");
-    setUsername("");
-    SetPassword("");
+    return false;
+  };
+
+  const handleClickAddBtn = () => {
+    if (checkAllFields() === true) {
+      setError(false);
+      const newPassword = {
+        websiteName,
+        username,
+        password,
+        id: uuidv4(),
+      };
+      const passwordList = [...allPasswordList, newPassword];
+      setAllPasswordList(passwordList);
+      setWebsiteName("");
+      setUsername("");
+      setPassword("");
+    } else setError(true);
+  };
+
+  const handleShowPassword = (event) => {
+    setShowPassword(event.target.checked);
+  };
+
+  const handleDeletePassword = (id) => {
+    const remainingPasswordList = allPasswordList.filter(
+      (password) => password.id !== id
+    );
+    setAllPasswordList(remainingPasswordList);
+  };
+
+  const handleSearch = (event) => {
+    setSearch(event.target.value);
+    const results = allPasswordList.filter((item) =>
+      item.websiteName.toLowerCase().includes(event.target.value.toLowerCase())
+    );
+    setSearchResults(results);
   };
 
   return (
@@ -48,10 +94,7 @@ function App() {
                 alt="Password SVG"
               />
             </div>
-            <form
-              onSubmit={handleAddPassword}
-              className="mt-8 sm:mt-12 lg:mt-0 flex flex-col rounded-2xl bg-yellow-100 p-6 md:p-8 lg:w-1/2 xl:w-1/3"
-            >
+            <div className="mt-8 sm:mt-12 lg:mt-0 flex flex-col rounded-2xl bg-yellow-100 p-6 md:p-8 lg:w-1/2 xl:w-1/3">
               <h2 className="title-font mb-4 text-lg lg:text-xl font-medium text-gray-900">
                 Add Password
               </h2>
@@ -63,8 +106,9 @@ function App() {
                   Website
                 </label>
                 <input
-                  onChange={(e) => setWebsite(e.target.value)}
-                  value={website}
+                  placeholder="Enter Website"
+                  value={websiteName}
+                  onChange={handleOnChangeWebSite}
                   type="text"
                   id="web-site"
                   name="full-name"
@@ -81,8 +125,9 @@ function App() {
                 </label>
                 <input
                   type="text"
-                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter Username"
                   value={username}
+                  onChange={handleOnChangeUsername}
                   id="full-name"
                   required
                   name="full-name"
@@ -97,8 +142,9 @@ function App() {
                   Password
                 </label>
                 <input
-                  onChange={(e) => SetPassword(e.target.value)}
+                  placeholder="Enter Password"
                   value={password}
+                  onChange={handleOnChangePassword}
                   type="password"
                   id="password"
                   required
@@ -107,17 +153,23 @@ function App() {
                 />
               </div>
               <button
-                type="submit"
+                type="button"
+                onClick={handleClickAddBtn}
                 className="rounded-3xl border-0 bg-yellow-400 font-semibold text-gray-700 px-6 py-2 text-lg lg:text-xl hover:bg-yellow-300 focus:outline-none"
               >
                 Add
               </button>
-            </form>
+              {error && (
+                <p className="text-red-400 text-center my-2 text-balance">
+                  Please fill all details
+                </p>
+              )}
+            </div>
           </div>
         </div>
-        <section className="text-gray-600 w-full bg-yellow-100 rounded-2xl body-font">
-          <div className="container px-5 py-24 mx-auto">
-            <div className="flex flex-col text-center w-full mb-20">
+        <section className="text-gray-600 bg-yellow-100 w-full rounded-2xl body-font">
+          <div className="container px-4 md:px-5 py-10 md:py-24 mx-auto">
+            <div className="flex flex-col text-center w-full mb-10 md:mb-20">
               <h1 className="sm:text-3xl text-2xl font-medium title-font mb-4 text-gray-900">
                 Manage your passwords
               </h1>
@@ -125,10 +177,25 @@ function App() {
                 Check your saved passwords
               </p>
             </div>
+            <div className="flex flex-col md:flex-row items-center mb-4">
+              <h3 className="text-lg font-medium mb-2 md:mb-0 md:mr-4">
+                Your Passwords -{" "}
+              </h3>
+              <span className="bg-gray-700 ml-0 md:ml-2 rounded-full text-white w-10 h-10 flex justify-center items-center">
+                {allPasswordList.length}
+              </span>
+            </div>
             <div className="flex flex-wrap -m-2">
-              {!passwords.length && <Empty />}
-              {passwords.map((password, index) => {
-                return <Password key={index} data={password} />;
+              {!searchResults.length && <Empty />}
+              {searchResults.map((item) => {
+                return (
+                  <Password
+                    key={item.id}
+                    passwordDetails={item}
+                    showPassword={showPassword}
+                    handleDeletePassword={handleDeletePassword}
+                  />
+                );
               })}
             </div>
           </div>
